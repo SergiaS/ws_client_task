@@ -1,0 +1,9 @@
+.idea
+out
+target
+*.iml
+*.patch
+*.jpg
+*.png
+*.gif
+*.txt
