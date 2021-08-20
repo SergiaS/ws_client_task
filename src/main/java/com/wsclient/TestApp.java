@@ -25,17 +25,22 @@ public class TestApp {
     private static final String ALGORITHM = "AES";
     private static final byte[] KEY_VALUE = new byte[]{'0','2','3','4','5','6','7','9','8','2','3','4','6','7','9','8'};
 
-    public static void main(String[] args) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
+    public static void main(String[] args) {
         String filename = dtf.format(LocalDateTime.now()) + ".txt";
+        Key key = new SecretKeySpec(KEY_VALUE, ALGORITHM);
+        Cipher cipher = null;
+        try {
+            cipher = Cipher.getInstance(ALGORITHM);
+            cipher.init(Cipher.ENCRYPT_MODE, key);
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException e) {
+            e.printStackTrace();
+        }
+
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
              BufferedWriter writer = new BufferedWriter(new FileWriter(dtf.format(LocalDateTime.now()) + "_2" + ".txt"));
+             CipherOutputStream cipherOut = new CipherOutputStream(new FileOutputStream(filename), cipher);
         ) {
             WebSocketClientEndpoint clientEndpoint = new WebSocketClientEndpoint(new URI(baseEndpoint));
-
-            Key key = new SecretKeySpec(KEY_VALUE, ALGORITHM);
-            Cipher cipher = Cipher.getInstance(ALGORITHM);
-            cipher.init(Cipher.ENCRYPT_MODE, key);
-            CipherOutputStream cipherOut = new CipherOutputStream(new FileOutputStream(filename), cipher);
 
             clientEndpoint.addMessageHandler(new WebSocketClientEndpoint.MessageHandler() {
                 @Override
@@ -94,8 +99,7 @@ public class TestApp {
                         "}";
                 clientEndpoint.sendMessage(jsonObj);
             }
-            cipherOut.close();
-        } catch (URISyntaxException | IOException | NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException e) {
+        } catch (URISyntaxException | IOException e) {
             e.printStackTrace();
         }
     }
