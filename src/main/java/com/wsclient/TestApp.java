@@ -1,10 +1,8 @@
 package com.wsclient;
 
-import com.wsclient.model.RequestCommand;
 import com.wsclient.websocket.WebSocketClientEndpoint;
 
 import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
@@ -16,7 +14,7 @@ import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
+import java.util.zip.GZIPOutputStream;
 
 // SUBSCRIBE;aggTrade;btcusdt
 public class TestApp {
@@ -36,9 +34,9 @@ public class TestApp {
             e.printStackTrace();
         }
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-             BufferedWriter writer = new BufferedWriter(new FileWriter(dtf.format(LocalDateTime.now()) + "_2" + ".txt"));
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(dtf.format(LocalDateTime.now()) + "_2" + ".txt"));
              CipherOutputStream cipherOut = new CipherOutputStream(new FileOutputStream(filename), cipher);
+             GZIPOutputStream gzip = new GZIPOutputStream(cipherOut);
         ) {
             WebSocketClientEndpoint clientEndpoint = new WebSocketClientEndpoint(new URI(baseEndpoint));
 
@@ -46,7 +44,7 @@ public class TestApp {
                 @Override
                 public void handleMessage(String message) {
                     try {
-                        cipherOut.write((message + "\n").getBytes());
+                        gzip.write((message + "\n").getBytes());
 
                         writer.write(message + "\n");
                     } catch (IOException e) {
@@ -56,49 +54,49 @@ public class TestApp {
                 }
             });
 
-//            String json = "{\n" +
-//                    "\"method\": \"SUBSCRIBE\",\n" +
-//                    "\"params\":\n" +
-//                    "[\n" +
-//                    "\"btcusdt@aggTrade\"\n" +
-//                    "],\n" +
-//                    "\"id\": 1\n" +
-//                    "}";
-//            clientEndpoint.sendMessage(json);
-//            try {
-//                Thread.sleep(3000);
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
-
-            String command;
-            while (!(command = reader.readLine()).equals("stop")) {
-                RequestCommand requestCommand;
-                if (command.contains("SUBSCRIBE")) {
-                    String[] splitCommands = command.split(";");
-                    long count = Arrays.stream(splitCommands)
-                            .filter(TestApp::commandValidation).count();
-                    if (count != 3) {
-                        wrongInput();
-                        continue;
-                    }
-                    requestCommand = new RequestCommand(splitCommands[0], splitCommands[1], splitCommands[2].toLowerCase());
-                } else {
-                    wrongInput();
-                    continue;
-                }
-
-                String jsonObj = "" +
-                        "{\n" +
-                            "\"method\": \"" + requestCommand.getAction() + "\",\n" +
-                            "\"params\":\n" +
-                            "[\n" +
-                            "\"" + requestCommand.getSymbol() + "@" + requestCommand.getChannel() + "\"\n" +
-                            "],\n" +
-                            "\"id\": " + (requestCommand.getAction().equalsIgnoreCase("SUBSCRIBE") ? 1 : 3) + "\n" +
-                        "}";
-                clientEndpoint.sendMessage(jsonObj);
+            String json = "{\n" +
+                    "\"method\": \"SUBSCRIBE\",\n" +
+                    "\"params\":\n" +
+                    "[\n" +
+                    "\"btcusdt@aggTrade\"\n" +
+                    "],\n" +
+                    "\"id\": 1\n" +
+                    "}";
+            clientEndpoint.sendMessage(json);
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
+
+//            String command;
+//            while (!(command = reader.readLine()).equals("stop")) {
+//                RequestCommand requestCommand;
+//                if (command.contains("SUBSCRIBE")) {
+//                    String[] splitCommands = command.split(";");
+//                    long count = Arrays.stream(splitCommands)
+//                            .filter(TestApp::commandValidation).count();
+//                    if (count != 3) {
+//                        wrongInput();
+//                        continue;
+//                    }
+//                    requestCommand = new RequestCommand(splitCommands[0], splitCommands[1], splitCommands[2].toLowerCase());
+//                } else {
+//                    wrongInput();
+//                    continue;
+//                }
+//
+//                String jsonObj = "" +
+//                        "{\n" +
+//                            "\"method\": \"" + requestCommand.getAction() + "\",\n" +
+//                            "\"params\":\n" +
+//                            "[\n" +
+//                            "\"" + requestCommand.getSymbol() + "@" + requestCommand.getChannel() + "\"\n" +
+//                            "],\n" +
+//                            "\"id\": " + (requestCommand.getAction().equalsIgnoreCase("SUBSCRIBE") ? 1 : 3) + "\n" +
+//                        "}";
+//                clientEndpoint.sendMessage(jsonObj);
+//            }
         } catch (URISyntaxException | IOException e) {
             e.printStackTrace();
         }
