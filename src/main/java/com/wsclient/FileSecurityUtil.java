@@ -5,31 +5,29 @@ import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
-import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.util.zip.*;
 
 public final class FileSecurityUtil {
 
-    private static final String ALGORITHM = "AES";
-    private static final byte[] KEY_VALUE = new byte[]{'0','2','3','4','5','6','7','9','8','2','3','4','6','7','9','8'};
+    public static final String ALGORITHM = "AES";
+    public static final byte[] KEY_VALUE = new byte[]{'0','2','3','4','5','6','7','9','8','2','3','4','6','7','9','8'};
 
-    public static void main(String[] args) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
-//        encryptFile("20210822-125923_2.txt");
-//        decryptFile("20210822-110717_2_enc2.txt");
+    public static void main(String[] args) {
+//        encryptFile("20210824-195725_2.txt");
+//        decryptFile("20210824-195725_2_enc2.txt");
 
-//        gzipFile("20210822-110717_2.txt");
-//        ungzipFile("comp_gzip.txt");
+//        gzipFile("20210822-151456_2.txt");
+//        ungzipFileToFile("comp_gzip.gz");
+//        ungzipFileToConsole("comp_gzip.gz");
 
-        decompressAndDecrypt("20210822-141454.txt");
+        decompressAndDecrypt("20210824-195725.txt");
     }
 
-    private static void decompressAndDecrypt(String filename) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException {
-        Key key = new SecretKeySpec(KEY_VALUE, ALGORITHM);
-        Cipher cipherInstance = Cipher.getInstance(ALGORITHM);
-        cipherInstance.init(Cipher.DECRYPT_MODE, key);
+    private static void decompressAndDecrypt(String filename) {
+        Cipher cipher = createCipher(false);
         try (FileInputStream fis = new FileInputStream(filename);
-             CipherInputStream cis = new CipherInputStream(fis, cipherInstance);
+             CipherInputStream cis = new CipherInputStream(fis, cipher);
              GZIPInputStream gis = new GZIPInputStream(cis);
         ) {
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(gis, StandardCharsets.UTF_8));
@@ -44,12 +42,9 @@ public final class FileSecurityUtil {
         }
     }
 
-
     private static void encryptFile(String filename) {
         try (BufferedReader reader = new BufferedReader(new FileReader(filename));) {
-            Key key = new SecretKeySpec(KEY_VALUE, ALGORITHM);
-            Cipher cipher = Cipher.getInstance(ALGORITHM);
-            cipher.init(Cipher.ENCRYPT_MODE, key);
+            Cipher cipher = createCipher(true);
             CipherOutputStream cipherOut = new CipherOutputStream(new FileOutputStream(filename.replace(".txt", "_enc2.txt")), cipher);
 
             String line;
@@ -58,15 +53,13 @@ public final class FileSecurityUtil {
             }
             cipherOut.flush();
             cipherOut.close();
-        } catch (IOException | NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private static void decryptFile(String filename) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
-        Key key = new SecretKeySpec(KEY_VALUE, ALGORITHM);
-        Cipher cipherInstance = Cipher.getInstance(ALGORITHM);
-        cipherInstance.init(Cipher.DECRYPT_MODE, key);
+    private static void decryptFile(String filename) {
+        Cipher cipherInstance = createCipher(false);
         try (FileInputStream fis = new FileInputStream(filename);
              CipherInputStream in = new CipherInputStream(fis, cipherInstance);
              Reader reader = new InputStreamReader(in);
@@ -85,7 +78,7 @@ public final class FileSecurityUtil {
 
     private static void gzipFile(String filename) {
         try (FileInputStream fis = new FileInputStream(filename);
-             FileOutputStream fos = new FileOutputStream("comp_gzip.txt");
+             FileOutputStream fos = new FileOutputStream("comp_gzip.gz");
              GZIPOutputStream gos = new GZIPOutputStream(fos);) {
 
             byte[] buffer = new byte[1024];
@@ -97,7 +90,7 @@ public final class FileSecurityUtil {
         }
     }
 
-    private static void ungzipFile(String filename) {
+    private static void ungzipFileToFile(String filename) {
         try (FileInputStream fis = new FileInputStream(filename);
              GZIPInputStream gis = new GZIPInputStream(fis);
              FileOutputStream fos = new FileOutputStream("uncomp_gzip.txt");) {
@@ -111,6 +104,21 @@ public final class FileSecurityUtil {
         }
     }
 
+    private static void ungzipFileToConsole(String filename) {
+        try (FileInputStream fis = new FileInputStream(filename);
+             GZIPInputStream gis = new GZIPInputStream(fis);
+             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(gis, StandardCharsets.UTF_8));) {
+
+            StringBuilder res = new StringBuilder();
+            String sTmp;
+            while ((sTmp = bufferedReader.readLine()) != null) {
+                res.append(sTmp).append("\n");
+            }
+            System.out.println(res);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     private static void compressFileByZip(String sourceFile) throws IOException {
         FileOutputStream fos = new FileOutputStream("compressed.txt");
@@ -145,13 +153,16 @@ public final class FileSecurityUtil {
         System.out.println(baos);
     }
 
-    private byte[] encryptMessage(byte[] message, byte[] keyBytes)
-            throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException,
-            BadPaddingException, IllegalBlockSizeException {
-
-        Cipher cipher = Cipher.getInstance(ALGORITHM);
-        SecretKey secretKey = new SecretKeySpec(keyBytes, ALGORITHM);
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey);
-        return cipher.doFinal(message);
+    public static Cipher createCipher(boolean isNeedEncrypt) {
+        Cipher cipher = null;
+        try {
+            cipher = Cipher.getInstance(ALGORITHM);
+            SecretKey secretKey = new SecretKeySpec(KEY_VALUE, ALGORITHM);
+            cipher.init(isNeedEncrypt ? Cipher.ENCRYPT_MODE : Cipher.DECRYPT_MODE, secretKey);
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException e) {
+            e.printStackTrace();
+        }
+        return cipher;
     }
+
 }
