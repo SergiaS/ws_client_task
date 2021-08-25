@@ -1,6 +1,7 @@
 package com.wsclient;
 
-import com.wsclient.model.RequestCommand;
+import com.google.gson.Gson;
+import com.wsclient.model.JsonStreamRequest;
 import com.wsclient.websocket.WebSocketClientEndpoint;
 
 import javax.crypto.Cipher;
@@ -13,7 +14,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.zip.GZIPOutputStream;
 
-// SUBSCRIBE;aggTrade;btcusdt
+/**
+ * With manual method use type to your console command like SUBSCRIBE;aggTrade;btcusdt
+ */
 public class Main {
     private final static String baseEndpoint = "wss://stream.binance.com:9443/ws";
     private final static DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
@@ -46,19 +49,20 @@ public class Main {
                 }
             });
 
-            simulateMessageSender(clientEndpoint);
-
-            enterCommandAndSendMessage(reader, clientEndpoint);
+            autoMessageSender(clientEndpoint);
+//            manualMessageSender(reader, clientEndpoint);
 
         } catch (URISyntaxException | IOException e) {
             e.printStackTrace();
         }
     }
 
-    private static void enterCommandAndSendMessage(BufferedReader reader, WebSocketClientEndpoint clientEndpoint) throws IOException {
+    private static void manualMessageSender(BufferedReader reader, WebSocketClientEndpoint clientEndpoint) throws IOException {
+        JsonStreamRequest jsonStrReq;
         String command;
         while (!(command = reader.readLine()).equals("stop")) {
-            RequestCommand requestCommand;
+            String method;
+            String[] param = new String[1];
             if (command.contains("SUBSCRIBE")) {
                 String[] splitCommands = command.split(";");
                 long count = Arrays.stream(splitCommands)
@@ -67,37 +71,29 @@ public class Main {
                     wrongInput();
                     continue;
                 }
-                requestCommand = new RequestCommand(splitCommands[0], splitCommands[1], splitCommands[2].toLowerCase());
-                System.out.println("You have " + requestCommand.getAction());
+
+                method = splitCommands[0];
+                param[0] = splitCommands[2].toLowerCase() + "@" + splitCommands[1];
+
+                System.out.println("You have " + method);
             } else {
                 wrongInput();
                 continue;
             }
 
-            String jsonObj = "" +
-                    "{\n" +
-                    "\"method\": \"" + requestCommand.getAction() + "\",\n" +
-                    "\"params\":\n" +
-                    "[\n" +
-                    "\"" + requestCommand.getSymbol() + "@" + requestCommand.getChannel() + "\"\n" +
-                    "],\n" +
-                    "\"id\": " + (requestCommand.getAction().equalsIgnoreCase("SUBSCRIBE") ? 1 : 3) + "\n" +
-                    "}";
-            clientEndpoint.sendMessage(jsonObj);
+            jsonStrReq = new JsonStreamRequest(method, param);
+            Gson gson = new Gson();
+            String message = gson.toJson(jsonStrReq);
+
+            clientEndpoint.sendMessage(message);
         }
     }
 
-    private static void simulateMessageSender(WebSocketClientEndpoint clientEndpoint) throws IOException {
-        String json = "{\n" +
-                "\"method\": \"SUBSCRIBE\",\n" +
-                "\"params\":\n" +
-                "[\n" +
-                "\"btcusdt@aggTrade\"\n" +
-                "],\n" +
-                "\"id\": 1\n" +
-                "}";
+    // just for test that it works
+    private static void autoMessageSender(WebSocketClientEndpoint clientEndpoint) throws IOException {
+        clientEndpoint.sendMessage(
+                new Gson().toJson(JsonStreamRequest.sample()));
 
-        clientEndpoint.sendMessage(json);
         try {
             Thread.sleep(3000);
         } catch (InterruptedException e) {

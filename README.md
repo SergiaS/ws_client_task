@@ -13,3 +13,5 @@ To stop receiving the data - type `stop` to the console.
 
 In the final result you will get encoded and compressed websocket file data.
 You can read this file - you need to use method `decompressAndDecrypt(filenameToRead)` in the `FileSecurityUtil`.
+
+With class `StreamRewind` you can unzip file if you don't know which algorithm was use for compress.    
